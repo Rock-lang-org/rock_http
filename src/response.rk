@@ -36,7 +36,7 @@ impl Response
         Response
             status: status
             headers: headers
-            body: Body::Text (String::from_str value)
+            body: Body::Text (String::from value)
 
     bytes = status, value ->
         headers: Vec Header = Vec::new!
@@ -188,7 +188,7 @@ write_response: &W -> &Response -> Bool -> Result I64, HttpError where W: Write
         validation_index = validation_index + 1
 
     mut total = write_str writer, "HTTP/1.1 "?
-    status = String::from_i64 response.status
+    status = String::from response.status
     total = total + (write_str writer, status.as_str!?)
     total = total + (write_str writer, " "?)
     total = total + (write_str writer, status_reason response.status?)
@@ -201,7 +201,7 @@ write_response: &W -> &Response -> Bool -> Result I64, HttpError where W: Write
         i = i + 1
 
     if !(response_has_header response, "content-length")
-        length = String::from_i64 framed_len
+        length = String::from framed_len
         total = total + (write_header writer, "Content-Length", length.as_str!?)
     if !(response_has_header response, "connection")
         total = total + (write_header writer, "Connection", "close"?)

@@ -14,7 +14,7 @@ standard-library types such as `TcpListener`, `TcpStream`, `Vec`, `String`,
 
 ## Dependency
 
-With Rock `v0.5.2`, clone this repository beside your application and add a
+With Rock `v0.6.0`, clone this repository beside your application and add a
 path dependency (paths are relative to your application's `rock.toml`):
 
 ```sh
@@ -81,10 +81,10 @@ async I/O, HTTP/2, or HTTP/3.
 ## Build
 
 Install the [Rock toolchain](https://rock-lang-org.github.io/Rock/getting-started/installation.html)
-and select `v0.5.2`, the version pinned by this repository and CI:
+and select `v0.6.0`, the version pinned by this repository and CI:
 
 ```sh
-rockup install v0.5.2
+rockup install v0.6.0
 ```
 
 Binary releases require Linux x86_64, glibc 2.39 or newer (Ubuntu 24.04),

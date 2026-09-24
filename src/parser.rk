@@ -149,7 +149,7 @@ parse_method = bytes ->
     else if ascii_eq_literal bytes, "PATCH"
         Method::Patch
     else
-        Method::Other (String::from_bytes bytes)
+        Method::Other (String::from bytes)
 
 parse_version: &[U8] -> Version
 parse_version = bytes ->
@@ -232,8 +232,8 @@ parse_headers = bytes, start, end, config ->
         if headers.len! >= config.max_headers
             return HeadersResult::Error HttpError::TooManyHeaders
         headers.push Header
-            name: String::from_bytes name_bytes
-            value: String::from_bytes value_bytes
+            name: String::from name_bytes
+            value: String::from value_bytes
 
         if ascii_eq_literal_ignore_case name_bytes, "content-length"
             match parse_content_length value_bytes
@@ -294,7 +294,7 @@ parse_request: &[U8] -> &ServerConfig -> DecodeResult
                     DecodeResult::Error HttpError::UnsupportedVersion
                 else
                     method = parse_method method_bytes
-                    target = String::from_bytes target_bytes
+                    target = String::from target_bytes
                     version = parse_version version_bytes
                     match parse_headers bytes, request_line_end + 2, header_end, config
                         HeadersResult::Error error => DecodeResult::Error error
