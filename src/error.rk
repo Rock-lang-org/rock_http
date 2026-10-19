@@ -1,8 +1,9 @@
 // HTTP protocol and serving failures.
 
-> stdlib::io::IoError
-> stdlib::thread::ThreadError
-> stdlib::convert::From
+// Use the defining module so 0.7.0 resolves the concrete From impl argument.
+> std::io::traits::IoError
+> std::concurrency::thread::ThreadError
+> std::convert::From
 
 < enum HttpError
     Io IoError

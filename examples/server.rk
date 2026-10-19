@@ -1,8 +1,8 @@
-> stdlib::convert::string_to_int
-> stdlib::env::args
-> stdlib::net::SocketAddrV4
-> stdlib::option::Option
-> stdlib::result::Result
+> std::convert::string_to_int
+> std::env::args
+> std::io::net::SocketAddrV4
+> std::control::Option
+> std::control::Result
 > rock_http::request::Request
 > rock_http::response::Response
 > rock_http::server::Server
@@ -12,6 +12,8 @@ handle = request ->
     target_is_echo = request.target.as_str! == "/echo"
     if target_is_echo
         Response::bytes 200, request.body
+    else if request.target.as_str! == "/unicode"
+        Response::text 200, "Rock 🦀\0"
     else
         (Response::text 200, "hello from Rock").with_header "Content-Type", "text/plain"
 

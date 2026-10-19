@@ -1,6 +1,6 @@
 // Resource limits applied before request allocation can grow without bound.
 
-> stdlib::clone::Clone
+> std::clone::Clone
 
 < struct ServerConfig
     < max_request_line_bytes: I64

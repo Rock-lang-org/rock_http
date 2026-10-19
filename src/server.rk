@@ -1,17 +1,16 @@
 // Blocking one-request-per-connection HTTP serving.
 
-> stdlib::arc::Arc
-> stdlib::callable::Fn
-> stdlib::clone::Clone
-> stdlib::io::Read
-> stdlib::io::IoError
-> stdlib::net::SocketAddrV4
-> stdlib::net::TcpListener
-> stdlib::net::TcpStream
-> stdlib::result::Result
-> stdlib::slice::slice_len
-> stdlib::thread::spawn_detached
-> stdlib::vec::Vec
+> std::concurrency::Arc
+> std::functional::Fn
+> std::clone::Clone
+> std::io::Read
+> std::io::IoError
+> std::io::net::SocketAddrV4
+> std::io::net::TcpListener
+> std::io::net::TcpStream
+> std::control::Result
+> std::concurrency::thread::spawn_detached
+> std::collections::Vec
 > rock_http::config::ServerConfig
 > rock_http::error::HttpError
 > rock_http::parser::DecodeResult
@@ -27,7 +26,7 @@
 append_bytes: &mut (Vec U8) -> &[U8] -> ()
 append_bytes = output, bytes ->
     mut i = 0
-    while i < (slice_len bytes)
+    while i < bytes.len!
         output.push bytes[i]
         i = i + 1
 

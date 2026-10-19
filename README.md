@@ -14,7 +14,7 @@ standard-library types such as `TcpListener`, `TcpStream`, `Vec`, `String`,
 
 ## Dependency
 
-With Rock `v0.5.2`, clone this repository beside your application and add a
+With Rock `v0.7.0`, clone this repository beside your application and add a
 path dependency (paths are relative to your application's `rock.toml`):
 
 ```sh
@@ -29,8 +29,8 @@ rock_http = { path = "../rock_http" }
 ## Server
 
 ```rock
-> stdlib::net::SocketAddrV4
-> stdlib::result::Result
+> std::io::net::SocketAddrV4
+> std::control::Result
 > rock_http::request::Request
 > rock_http::response::Response
 > rock_http::server::Server
@@ -81,18 +81,34 @@ async I/O, HTTP/2, or HTTP/3.
 ## Build
 
 Install the [Rock toolchain](https://rock-lang-org.github.io/Rock/getting-started/installation.html)
-and select `v0.5.2`, the version pinned by this repository and CI:
+and select `v0.7.0`, the version tested by this repository's CI:
 
 ```sh
-rockup install v0.5.2
+rockup install v0.7.0
+rockup default v0.7.0
 ```
 
 Binary releases require Linux x86_64, glibc 2.39 or newer (Ubuntu 24.04),
 and a C linker (`build-essential`); Rust and LLVM are not needed.
-From this checkout:
+
+This repository root is a library, not an executable. Build its reusable
+artifact from the root:
+
+```sh
+rock artifact
+rock artifact --release
+```
+
+Rock 0.7.0's `rock build` attempts an executable build even when the manifest
+entry is named `src/lib.rk`; it does not select a library build automatically.
+Running it at this repository root produces misleading import/type errors.
+Use `rock artifact` here instead.
+
+To build and run the standalone server application:
 
 ```console
 $ cd example
+$ rock build
 $ rock run
 ```
 
@@ -105,15 +121,17 @@ From the repository root, with Python 3 and the installed toolchain:
 
 ```sh
 python3 tests/integration.py
+python3 tests/integration.py --release
 ```
 
 The runner uses `rockc` directly to build a library artifact and both fixtures
 in a temporary directory; it never builds the Rust compiler or needs a Rock
-source checkout. It discovers the installed `stdlib.rkca` with
+source checkout. It discovers the installed `std.rkca` with
 `rockc --print target-libdir` and passes it explicitly using `--extern-artifact`
 for every compilation. It checks parser errors and limits, exact response framing,
-GET, HEAD, fragmented POST, unsupported transfer coding, recovery after an
-error, and four concurrent clients against a real localhost server. Processes
+GET, HEAD, fragmented and binary POST, UTF-8 and embedded-NUL response framing,
+invalid request bytes, unsupported transfer coding, recovery after an error,
+and four concurrent clients against a real localhost server. Processes
 and socket reads have timeouts, and the server and temporary files are cleaned up.
 
 Override the compiler with `ROCKC` or `--rockc`; `--sysroot` selects a matching

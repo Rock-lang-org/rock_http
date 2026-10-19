@@ -1,14 +1,12 @@
 // Owned HTTP response data and constructors.
 
-> stdlib::string_type::String
-> stdlib::string::str_as_bytes
-> stdlib::vec::Vec
-> stdlib::io::Write
-> stdlib::io::write_all
-> stdlib::io::write_str
-> stdlib::option::Option
-> stdlib::result::Result
-> stdlib::slice::slice_len
+> std::string::String
+> std::collections::Vec
+> std::io::Write
+> std::io::write_all
+> std::io::write_str
+> std::control::Option
+> std::control::Result
 > rock_http::error::HttpError
 > rock_http::request::Header
 > rock_http::request::ascii_eq_ignore_case
@@ -31,12 +29,13 @@ impl Response
             headers: headers
             body: Body::Empty
 
+    text: I64 -> &Str -> Response
     text = status, value ->
         headers: Vec Header = Vec::new!
         Response
             status: status
             headers: headers
-            body: Body::Text (String::from_str value)
+            body: Body::Text (String::from value)
 
     bytes = status, value ->
         headers: Vec Header = Vec::new!
@@ -95,8 +94,8 @@ response_has_header = response, name ->
 
 valid_header_name: &Str -> Bool
 valid_header_name = name ->
-    bytes = str_as_bytes name
-    len = slice_len bytes
+    bytes = name.as_bytes!
+    len = bytes.len!
     if len == 0
         false
     else
@@ -116,10 +115,10 @@ valid_header_name = name ->
 
 valid_header_value: &Str -> Bool
 valid_header_value = value ->
-    bytes = str_as_bytes value
+    bytes = value.as_bytes!
     mut valid = true
     mut i = 0
-    while valid && i < (slice_len bytes)
+    while valid && i < bytes.len!
         byte = bytes[i] as I64
         valid = byte == 9 || (byte >= 32 && byte < 127)
         i = i + 1
@@ -127,8 +126,8 @@ valid_header_value = value ->
 
 parse_decimal_header: &Str -> (Bool, I64)
 parse_decimal_header = value ->
-    bytes = str_as_bytes value
-    len = slice_len bytes
+    bytes = value.as_bytes!
+    len = bytes.len!
     mut parsed: I64 = 0
     mut valid = len > 0
     mut i = 0
@@ -188,7 +187,7 @@ write_response: &W -> &Response -> Bool -> Result I64, HttpError where W: Write
         validation_index = validation_index + 1
 
     mut total = write_str writer, "HTTP/1.1 "?
-    status = String::from_i64 response.status
+    status = String::from response.status
     total = total + (write_str writer, status.as_str!?)
     total = total + (write_str writer, " "?)
     total = total + (write_str writer, status_reason response.status?)
@@ -201,7 +200,7 @@ write_response: &W -> &Response -> Bool -> Result I64, HttpError where W: Write
         i = i + 1
 
     if !(response_has_header response, "content-length")
-        length = String::from_i64 framed_len
+        length = String::from framed_len
         total = total + (write_header writer, "Content-Length", length.as_str!?)
     if !(response_has_header response, "connection")
         total = total + (write_header writer, "Connection", "close"?)

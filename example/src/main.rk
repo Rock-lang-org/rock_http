@@ -1,20 +1,22 @@
-> stdlib::net::SocketAddrV4
-> stdlib::result::Result
-> rock_http::request::Request
+> std::io::net::SocketAddrV4
 > rock_http::response::Response
 > rock_http::server::Server
 
-handle: Request -> Response
 handle = request ->
     if request.target.as_str! == "/health"
-        Response::text 200, "ok"
-    else
-        Response::text 404, "not found"
+    then Response::text 200, "ok"
+    else Response::text 404, "not found"
+
+
+print_err = err ->
+    "Cannot bind address".println!
+    "Error: ".println!
+    // er.println!
+
 
 main = ->
     address = SocketAddrV4::localhost 8080
-    match Server::bind address
-        Result::Ok server =>
-            result = server.serve handle
-            0
-        Result::Err _ => 1
+    Server::bind address
+        >>= (.serve handle)
+        <!> print_err
+    0

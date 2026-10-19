@@ -1,11 +1,9 @@
 // Owned HTTP request data.
 
-> stdlib::string_type::String
-> stdlib::string::str_as_bytes
-> stdlib::clone::Clone
-> stdlib::option::Option
-> stdlib::slice::slice_len
-> stdlib::vec::Vec
+> std::string::String
+> std::clone::Clone
+> std::control::Option
+> std::collections::Vec
 
 < enum Method
     Get
@@ -26,10 +24,11 @@
     < value: String
 
 impl Header
+    new: &Str -> &Str -> Header
     new = name, value ->
         Header
-            name: String::from_str name
-            value: String::from_str value
+            name: String::from name
+            value: String::from value
 
 ascii_lower: U8 -> U8
 < ascii_lower = byte ->
@@ -41,10 +40,10 @@ ascii_lower: U8 -> U8
 
 ascii_eq_ignore_case: &Str -> &Str -> Bool
 < ascii_eq_ignore_case = left, right ->
-    left_bytes = str_as_bytes left
-    right_bytes = str_as_bytes right
-    len = slice_len left_bytes
-    if len != (slice_len right_bytes)
+    left_bytes = left.as_bytes!
+    right_bytes = right.as_bytes!
+    len = left_bytes.len!
+    if len != right_bytes.len!
         false
     else
         mut equal = true

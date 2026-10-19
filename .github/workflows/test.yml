@@ -17,13 +17,19 @@ jobs:
         run: sudo apt-get update && sudo apt-get install -y build-essential curl ca-certificates python3
       - name: Install pinned Rock toolchain
         run: |
-          curl --proto '=https' -fsSL https://github.com/rock-lang-org/Rock/releases/download/v0.5.2/install.sh -o "$RUNNER_TEMP/install-rock.sh"
-          sh "$RUNNER_TEMP/install-rock.sh" v0.5.2
+          curl --proto '=https' -fsSL https://github.com/rock-lang-org/Rock/releases/download/v0.7.0/install.sh -o "$RUNNER_TEMP/install-rock.sh"
+          sh "$RUNNER_TEMP/install-rock.sh" v0.7.0
           echo "$HOME/.rockup/bin" >> "$GITHUB_PATH"
       - name: Verify pinned compiler
-        run: test "$(rockc --version)" = "rockc 0.5.2"
+        run: test "$(rockc --version)" = "rockc 0.7.0"
+      - name: Build library artifact
+        run: rock artifact
+      - name: Build optimized library artifact
+        run: rock artifact --release
       - name: Protocol and real socket integration
         run: python3 tests/integration.py
+      - name: Optimized protocol and real socket integration
+        run: python3 tests/integration.py --release
       - name: Build standalone example
         working-directory: example
         run: rock build

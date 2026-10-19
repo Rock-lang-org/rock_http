@@ -1,11 +1,10 @@
 // Bounded incremental HTTP/1 request decoding.
 
-> stdlib::option::Option
-> stdlib::result::Result
-> stdlib::slice::slice_len
-> stdlib::string::byte_substr
-> stdlib::string_type::String
-> stdlib::vec::Vec
+> std::control::Option
+> std::control::Result
+> std::string::byte_substr
+> std::string::String
+> std::collections::Vec
 > rock_http::config::ServerConfig
 > rock_http::error::HttpError
 > rock_http::request::Header
@@ -38,7 +37,7 @@ find_crlf = bytes, start, end ->
 
 find_header_end: &[U8] -> I64
 find_header_end = bytes ->
-    len = slice_len bytes
+    len = bytes.len!
     mut found = 0 - 1
     mut i = 0
     while found < 0 && i + 3 < len
@@ -70,7 +69,7 @@ is_token_byte = byte ->
 
 valid_token: &[U8] -> Bool
 valid_token = bytes ->
-    len = slice_len bytes
+    len = bytes.len!
     if len == 0
         false
     else
@@ -83,7 +82,7 @@ valid_token = bytes ->
 
 valid_target: &[U8] -> Bool
 valid_target = bytes ->
-    len = slice_len bytes
+    len = bytes.len!
     if len == 0
         false
     else
@@ -106,9 +105,9 @@ ascii_lower = byte ->
 
 ascii_eq_literal: &[U8] -> &Str -> Bool
 ascii_eq_literal = bytes, literal ->
-    literal_bytes = stdlib::string::str_as_bytes literal
-    len = slice_len bytes
-    if len != (slice_len literal_bytes)
+    literal_bytes = literal.as_bytes!
+    len = bytes.len!
+    if len != literal_bytes.len!
         false
     else
         mut equal = true
@@ -120,9 +119,9 @@ ascii_eq_literal = bytes, literal ->
 
 ascii_eq_literal_ignore_case: &[U8] -> &Str -> Bool
 ascii_eq_literal_ignore_case = bytes, literal ->
-    literal_bytes = stdlib::string::str_as_bytes literal
-    len = slice_len bytes
-    if len != (slice_len literal_bytes)
+    literal_bytes = literal.as_bytes!
+    len = bytes.len!
+    if len != literal_bytes.len!
         false
     else
         mut equal = true
@@ -149,7 +148,7 @@ parse_method = bytes ->
     else if ascii_eq_literal bytes, "PATCH"
         Method::Patch
     else
-        Method::Other (String::from_bytes bytes)
+        Method::Other (String::from bytes)
 
 parse_version: &[U8] -> Version
 parse_version = bytes ->
@@ -176,7 +175,7 @@ valid_header_value: &[U8] -> Bool
 valid_header_value = bytes ->
     mut valid = true
     mut i = 0
-    while valid && i < (slice_len bytes)
+    while valid && i < bytes.len!
         value = bytes[i] as I64
         valid = value == 9 || (value >= 32 && value < 127)
         i = i + 1
@@ -184,7 +183,7 @@ valid_header_value = bytes ->
 
 parse_content_length: &[U8] -> LengthResult
 parse_content_length = bytes ->
-    len = slice_len bytes
+    len = bytes.len!
     if len == 0
         LengthResult::Error HttpError::InvalidContentLength
     else
@@ -212,47 +211,60 @@ parse_headers: &[U8] -> I64 -> I64 -> &ServerConfig -> HeadersResult
 parse_headers = bytes, start, end, config ->
     mut headers: Vec Header = Vec::new!
     mut content_length: Option I64 = Option::None
+    // A single result exit avoids 0.7.0 cleanup of uninitialized branch temporaries.
+    mut failure: Option HttpError = Option::None
     mut cursor = start
     while cursor < end
         line_end = find_crlf bytes, cursor, end + 2
         if line_end < cursor
-            return HeadersResult::Error HttpError::InvalidHeader
+            failure = Option::Some HttpError::InvalidHeader
+            break
         colon = find_byte bytes, cursor, line_end, (58 as U8)
         if colon <= cursor
-            return HeadersResult::Error HttpError::InvalidHeader
+            failure = Option::Some HttpError::InvalidHeader
+            break
         name_bytes = &bytes[cursor..colon]
         if !(valid_token name_bytes)
-            return HeadersResult::Error HttpError::InvalidHeader
+            failure = Option::Some HttpError::InvalidHeader
+            break
         value_start = trim_value_start bytes, colon + 1, line_end
         value_end = trim_value_end bytes, value_start, line_end
         value_bytes = &bytes[value_start..value_end]
         if !(valid_header_value value_bytes)
-            return HeadersResult::Error HttpError::InvalidHeader
+            failure = Option::Some HttpError::InvalidHeader
+            break
 
         if headers.len! >= config.max_headers
-            return HeadersResult::Error HttpError::TooManyHeaders
+            failure = Option::Some HttpError::TooManyHeaders
+            break
         headers.push Header
-            name: String::from_bytes name_bytes
-            value: String::from_bytes value_bytes
+            name: String::from name_bytes
+            value: String::from value_bytes
 
         if ascii_eq_literal_ignore_case name_bytes, "content-length"
             match parse_content_length value_bytes
-                LengthResult::Error error => return HeadersResult::Error error
+                LengthResult::Error error =>
+                    failure = Option::Some error
+                    break
                 LengthResult::Value parsed =>
                     match *(&content_length)
                         Option::Some previous =>
                             if previous != parsed
-                                return HeadersResult::Error HttpError::ConflictingContentLength
+                                failure = Option::Some HttpError::ConflictingContentLength
+                                break
                         Option::None => content_length = Option::Some parsed
         else if ascii_eq_literal_ignore_case name_bytes, "transfer-encoding"
-            return HeadersResult::Error HttpError::UnsupportedTransferEncoding
+            failure = Option::Some HttpError::UnsupportedTransferEncoding
+            break
 
         cursor = line_end + 2
-    HeadersResult::Value headers, (content_length.unwrap_or 0)
+    match failure
+        Option::Some error => HeadersResult::Error error
+        Option::None => HeadersResult::Value headers, (content_length.unwrap_or 0)
 
 parse_request: &[U8] -> &ServerConfig -> DecodeResult
 < parse_request = bytes, config ->
-    len = slice_len bytes
+    len = bytes.len!
     header_end = find_header_end bytes
     if header_end < 0
         request_line_end = find_crlf bytes, 0, len
@@ -294,7 +306,7 @@ parse_request: &[U8] -> &ServerConfig -> DecodeResult
                     DecodeResult::Error HttpError::UnsupportedVersion
                 else
                     method = parse_method method_bytes
-                    target = String::from_bytes target_bytes
+                    target = String::from target_bytes
                     version = parse_version version_bytes
                     match parse_headers bytes, request_line_end + 2, header_end, config
                         HeadersResult::Error error => DecodeResult::Error error

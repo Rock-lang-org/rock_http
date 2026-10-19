@@ -2,7 +2,7 @@
 name = "rock_http_example"
 version = "0.1.0"
 
-[lib]
+[[bin]]
 path = "src/main.rk"
 
 [dependencies]

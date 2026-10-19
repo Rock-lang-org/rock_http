@@ -18,6 +18,8 @@ def main():
                         help="compiler executable (default: ROCKC or rockc on PATH)")
     parser.add_argument("--sysroot", type=Path,
                         help="optional matching installed toolchain sysroot")
+    parser.add_argument("--release", action="store_true",
+                        help="compile artifacts and fixtures with optimization")
     args = parser.parse_args()
     root = Path(__file__).resolve().parents[1]
     compiler = [args.rockc]
@@ -27,10 +29,11 @@ def main():
         compiler + ["--print", "target-libdir"],
         cwd=root, check=True, capture_output=True, text=True, timeout=10,
     ).stdout.strip()
-    stdlib = Path(target_libdir) / "stdlib.rkca"
-    if not target_libdir or not stdlib.is_file():
-        parser.error(f"installed stdlib artifact not found: {stdlib}")
-    compiler += ["--extern-artifact", f"stdlib={stdlib}"]
+    std = Path(target_libdir) / "std.rkca"
+    if not target_libdir or not std.is_file():
+        parser.error(f"installed std artifact not found: {std}")
+    compiler += ["--release" if args.release else "--debug",
+                 "--extern-artifact", f"std={std}"]
 
     def compile_rock(source, output, *extra):
         output.mkdir(parents=True, exist_ok=True)
@@ -106,6 +109,46 @@ def main():
                                  b"gth: 5\r\n\r\nhe", b"llo"])
                 if not post.endswith(b"hello"):
                     raise AssertionError(f"unexpected fragmented POST response: {post!r}")
+                binary_body = b"\x00\xff\x80\r\n" + "Rock 🦀".encode("utf-8")
+                binary_head = (f"POST /echo HTTP/1.1\r\nContent-Length: {len(binary_body)}\r\n"
+                               "\r\n").encode("ascii")
+                binary = exchange([binary_head, binary_body])
+                expected_binary = (b"HTTP/1.1 200 OK\r\n"
+                                   + f"Content-Length: {len(binary_body)}\r\n".encode("ascii")
+                                   + b"Connection: close\r\n\r\n" + binary_body)
+                if binary != expected_binary:
+                    raise AssertionError(f"unexpected binary response: {binary!r}")
+                unicode = exchange([b"GET /unicode HTTP/1.1\r\n\r\n"])
+                expected_unicode = (b"HTTP/1.1 200 OK\r\nContent-Length: 10\r\n"
+                                    b"Connection: close\r\n\r\n" + "Rock 🦀\0".encode("utf-8"))
+                if unicode != expected_unicode:
+                    raise AssertionError(f"unexpected UTF-8 response: {unicode!r}")
+
+                # Reject untrusted bytes before String::from, and exercise cleanup
+                # after headers have already been allocated in previous iterations.
+                invalid_requests = [
+                    b"G\xffT / HTTP/1.1\r\n\r\n",
+                    b"GET /\xff HTTP/1.1\r\n\r\n",
+                    b"GET / HTTP/1.1\r\nHost: local\r\nMissing-Colon\r\n\r\n",
+                    b"GET / HTTP/1.1\r\nHost: local\r\nBad Name: value\r\n\r\n",
+                    b"GET / HTTP/1.1\r\nHost: local\r\nX-Test: \xff\r\n\r\n",
+                    b"GET / HTTP/1.1\r\nHost: local\r\nX-Test: \x00\r\n\r\n",
+                    b"GET / HTTP/1.1\r\nHost: local\r\nContent-Length: -1\r\n\r\n",
+                    b"GET / HTTP/1.1\r\nContent-Length: 9223372036854775808\r\n\r\n",
+                    b"GET / HTTP/1.1\r\nContent-Length: 1\r\nContent-Length: 2\r\n\r\n",
+                ]
+                for request in invalid_requests:
+                    rejected = exchange([request])
+                    if not rejected.startswith(b"HTTP/1.1 400 "):
+                        raise AssertionError(f"unexpected rejection for {request!r}: {rejected!r}")
+                too_many = exchange([b"GET / HTTP/1.1\r\n" + b"X-Test: value\r\n" * 101 + b"\r\n"])
+                if not too_many.startswith(b"HTTP/1.1 431 "):
+                    raise AssertionError(f"unexpected header limit response: {too_many!r}")
+                duplicate_length = exchange([
+                    b"POST /echo HTTP/1.1\r\nContent-Length: 5\r\nContent-Length: 5\r\n\r\nhello",
+                ])
+                if not duplicate_length.startswith(b"HTTP/1.1 200 ") or not duplicate_length.endswith(b"hello"):
+                    raise AssertionError(f"unexpected duplicate length response: {duplicate_length!r}")
                 unsupported = exchange([b"POST / HTTP/1.1\r\nTransfer-Encoding: chunked\r\n\r\n"])
                 if not unsupported.startswith(b"HTTP/1.1 501 "):
                     raise AssertionError(f"unexpected transfer response: {unsupported!r}")
