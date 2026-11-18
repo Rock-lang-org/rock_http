@@ -1,6 +1,9 @@
 // Blocking one-request-per-connection HTTP serving.
 
 > std::concurrency::Arc
+> std::concurrency::thread_safety::Send
+> std::concurrency::thread_safety::Sync
+> std::concurrency::thread_safety::Owned
 > std::functional::Fn
 > std::clone::Clone
 > std::io::Read
@@ -55,7 +58,7 @@ error_response = error ->
         HttpError::UnsupportedTransferEncoding => Response::text 501, "Not Implemented"
         _ => Response::text 400, "Bad Request"
 
-serve_connection: TcpStream -> &(Request -> Response) -> &ServerConfig -> Result I64, HttpError
+serve_connection: TcpStream -> &F -> &ServerConfig -> Result I64, HttpError where F: Fn Request, Response
 serve_connection = mut stream, handler, config ->
     match read_request (&mut stream), config
         Result::Ok request =>
@@ -71,7 +74,7 @@ serve_connection = mut stream, handler, config ->
 worker_unit: () -> ()
 worker_unit = -> return
 
-run_worker: TcpStream -> Arc (Request -> Response) -> ServerConfig -> ()
+run_worker: TcpStream -> Arc F -> ServerConfig -> () where F: Fn Request, Response
 run_worker = stream, handler, config !->
     result = serve_connection stream, &*handler, &config
 
@@ -95,7 +98,7 @@ impl Server
     @local_addr: Result SocketAddrV4, IoError
     @local_addr = -> self.listener.local_addr!
 
-    ~@serve: (Request -> Response) -> Result (), HttpError
+    ~@serve: F -> Result (), HttpError where F: Fn Request, Response, F: Send, F: Sync, F: Owned
     ~@serve = handler ->
         shared = Arc::new handler
         while true
